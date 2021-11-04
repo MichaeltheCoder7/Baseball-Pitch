@@ -1,3 +1,8 @@
+% This script can take the data from trackman then calculate
+% and plot an approximate baseball pitch trajectory as well as the
+% seam orientation, spin axis, velocity axis, and the hemisphere 
+% plane as a function of time.
+
 % The equation of seam line is from 
 % http://www.darenscotwilson.com/spec/bbseam/bbseam.html.
 
@@ -10,7 +15,7 @@
 
 % Define variables
 PLATEYDIM = 17.0/12.0; % Front of the plate
-ball_radius = 0.1214; % Radius of a regular baseball 
+ball_radius = 0.125; % Radius of a regular baseball in feet
 diameter = 2*ball_radius; % Get ball diameter
 diameter2 = 2*diameter; % Get 2*diameter
 
@@ -60,12 +65,12 @@ theta_alpha_d = 0;
 t1 = (-vy0 - sqrt(vy0*vy0 - 2.0*ay0*(y0 - release_pos_y)))/ay0;
 
 % Solve for position and velocity at release point (y0 = release_pos_y) in units of feet and seconds */
-TM_x0 =   0.5*ax0*t1*t1 + vx0*t1 + x0;
-TM_y0 =   0.5*ay0*t1*t1 + vy0*t1 + y0;
-TM_z0 =   0.5*az0*t1*t1 + vz0*t1 + z0;
-TM_vx0 =  vx0 + ax0*t1;
-TM_vy0 =  vy0 + ay0*t1;
-TM_vz0 =  vz0 + az0*t1;
+TM_x0 = 0.5*ax0*t1*t1 + vx0*t1 + x0;
+TM_y0 = 0.5*ay0*t1*t1 + vy0*t1 + y0;
+TM_z0 = 0.5*az0*t1*t1 + vz0*t1 + z0;
+TM_vx0 = vx0 + ax0*t1;
+TM_vy0 = vy0 + ay0*t1;
+TM_vz0 = vz0 + az0*t1;
 
 % Compute time in seconds for baseball to travel from y=release_pos_y to front of plate (y=1.417) */
 t2 = (-TM_vy0 - sqrt(TM_vy0*TM_vy0 - 2.0*ay0*(TM_y0 - PLATEYDIM)))/ay0;
@@ -73,7 +78,7 @@ t2 = (-TM_vy0 - sqrt(TM_vy0*TM_vy0 - 2.0*ay0*(TM_y0 - PLATEYDIM)))/ay0;
 % Input time (sec)
 time = 0;
 
-% compute (x,y,z) position of pitch as function of time
+% Compute (x,y,z) position of pitch as function of time
 baseballx = TM_x0 + TM_vx0*time + 0.5*ax0*time*time;
 basebally = TM_y0 + TM_vy0*time + 0.5*ay0*time*time;
 baseballz = TM_z0 + TM_vz0*time + 0.5*az0*time*time;
@@ -94,14 +99,15 @@ fprintf('vx = %f, vy = %f, vz = %f \n', velocity_x, velocity_y, velocity_z);
 % Normalize
 v_vector = v_vector./norm(v_vector);
 
-% Calculate the hemisphere plane using equation of a plane: ax+by+cz+d=0
-d = -(v_vector(1)*center(1) + v_vector(2)*center(2) + v_vector(3)*center(3));
+% Calculate the hemisphere plane using equation of a plane: ax+by+cz=d
+d = v_vector(1)*center(1) + v_vector(2)*center(2) + v_vector(3)*center(3);
 xd = linspace(center(1) - diameter2, center(1) + diameter2);
 yd = linspace(center(2) - diameter2, center(2) + diameter2);
-[hemisphere_x,hemisphere_y] = meshgrid(xd, yd);
-hemisphere_z = -1*(v_vector(1).*hemisphere_x + v_vector(2).*hemisphere_y + d)./v_vector(3); % Solve for z vertices data
+[hemisphere_x, hemisphere_y] = meshgrid(xd, yd);
+hemisphere_z = (d - (v_vector(1).*hemisphere_x + v_vector(2).*hemisphere_y))./v_vector(3); % Solve for z vertices data
+fprintf('hemisphere plane equation: %fx + %fy + %fz = %f \n', v_vector(1), v_vector(2), v_vector(3), d); % Print the equation
 
-% Calculate the active zone
+% To do: Calculate the active zone (spherical segment)
 
 
 
@@ -110,7 +116,7 @@ hemisphere_z = -1*(v_vector(1).*hemisphere_x + v_vector(2).*hemisphere_y + d)./v
 rotation_angle = mod((spin_rate*360/60)*time, 360);
 fprintf('rotation = %f \n', rotation_angle); 
 
-% Calculate the basis of baseball frame:
+% Calculate the basis of baseball frame (for seam orientation):
 
 % Handle corner case when seam lat = 0
 % Set theta alpha = seam long and set seam long to 0 in this case
@@ -168,7 +174,7 @@ else
             k3*k1*(1 - cos(k)) - k2*sin(k), k3*k2*(1 - cos(k)) + k1*sin(k),  cos(k) + (k3^2)*(1 - cos(k))];
 end
 
-% Calculate for seam rotations on the ball when plotting
+% Calculate for seam rotations on the ball
 temp = Rk*Rlat;
 y2 = temp(:, 2); % Rotation axis for seam long
 z1 = Rk(:, 3); % Rotation axis for seam lat
@@ -203,7 +209,6 @@ s = surf(double(center(1) + ball_radius*ballx), double(center(2) + ball_radius*b
 s.FaceColor = 'white'; % Ball color
 s.EdgeColor = [100/255 100/255 100/255]; % Grid color
 s.FaceAlpha = 1.0; % Transparency
-s.AmbientStrength = 1;
 
 % Rotate the ball to the seam orientation to match the grid
 rotate(s, k_vector, k_d, center);
@@ -211,7 +216,7 @@ rotate(s, z1, lat_d, center);
 rotate(s, y2, long_d, center);
 rotate(s, spin_axis, theta_alpha_d, center);
 
-% Draw seam
+% Draw seams
 alpha = 1:1:360;
 % Convert to radian
 alpha_r = alpha*pi/180.0;
@@ -244,6 +249,7 @@ p.LineStyle = ':';
 rotate(s, spin_axis, rotation_angle, center);
 rotate(p, spin_axis, rotation_angle, center);
 
+
 % Label and adjust settings
 xlabel('x')
 ylabel('y')
@@ -274,14 +280,21 @@ pat = patch([x_lim(1), x_lim(2), x_lim(2), x_lim(1)], [y_lim(1), y_lim(1), y_lim
 pat.EdgeColor = 'none';
 pat.FaceAlpha = 0.3;
 
+% Label
 legend('Spin Axis', 'Velocity Vector', 'Baseball', 'Seams', 'Ground')
 
 
+% Section break to get a second plot
+
 % Zoom in to the baseball
-xlim([center(1) - 0.25 center(1) + 0.25]);
-ylim([center(2) - 0.25 center(2) + 0.25]);
-zlim([center(3) - 0.25 center(3) + 0.25]);
+xlim([center(1) - diameter center(1) + diameter]);
+ylim([center(2) - diameter center(2) + diameter]);
+zlim([center(3) - diameter center(3) + diameter]);
 
 % Plot the hemisphere plane
 surf(hemisphere_x, hemisphere_y, hemisphere_z, 'EdgeColor', 'none', 'FaceColor', 'y', 'FaceAlpha', 0.5);
 legend('Spin Axis', 'Velocity Vector', 'Baseball', 'Seams', 'Ground', 'Hemisphere Plane')
+
+% To do: Plot the active zone
+
+
