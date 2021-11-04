@@ -58,6 +58,7 @@ theta_alpha_d = 0;
 
 
 % Calculate the position of the ball as a function of time using equations of motion
+% To do: Change it to a more appropriate model
 
 % Compute time in seconds for baseball to travel from y=release_pos_y to y=y0
 % Note that t1 is negative
@@ -263,7 +264,7 @@ axis equal
 view_azimuth = 180;
 view_elevation =  0;
 view([view_azimuth view_elevation]) % View (default is pitcher's perspective)
-axis([-8 8 0 70 0 15]) % Fix the axes
+axis([-2 2 0 60 0 10]) % Fix the axes
 
 % Adjust figure size
 figure_x0 = 10;
