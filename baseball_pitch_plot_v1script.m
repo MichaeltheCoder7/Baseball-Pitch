@@ -191,7 +191,7 @@ figure
 hold on
 
 % Draw spin axis
-quiver3(center(1) - a1*diameter, center(2) - a2*diameter, center(3) - a3*diameter, a1, a2, a3, diameter2, 'g', 'LineWidth', 2); % scale the starting point accorind to ball_radius
+quiver3(center(1) - a1*diameter, center(2) - a2*diameter, center(3) - a3*diameter, a1, a2, a3, diameter2, 'g', 'LineWidth', 2); % scale the starting point according to ball_radius
 
 % Draw velocity vector
 quiver3(center(1) - v_vector(1)*diameter, center(2) - v_vector(2)*diameter, center(3) - v_vector(3)*diameter, v_vector(1), v_vector(2), v_vector(3), diameter2, 'b', 'LineWidth', 2);
