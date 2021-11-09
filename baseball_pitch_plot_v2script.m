@@ -10,20 +10,20 @@
 % The positive z axis points to the sky
 
 
-% Define variables
+% Define variables (feet)
 PLATEYDIM = 17.0/12.0; % Front of the plate
-ball_radius = 0.125; % Radius of a regular baseball in feet
+ball_radius = 0.125; % Radius of a regular baseball
 diameter = 2*ball_radius; % Get ball diameter
 diameter2 = 2*diameter; % Get 2*diameter
 
 
-% Input initial baseball position (in feet)
+% Input initial baseball position (feet)
 relSide = 0.029947806; % Positive relSide is in the -x direction
 releaseDistance = 54.7489757;
 release_pos_y = releaseDistance;
 relHeight = 6.67789545;
 
-% Input the 9-parameter model
+% Input the 9-parameter model (feet and seconds)
 x0 = 0.057382798;
 y0 = 50;
 z0 = 6.384037468;
@@ -34,7 +34,7 @@ ax0 = -6.567216039;
 ay0 = 31.01559035;
 az0 = -12.86456735;
 
-% Input spin axis
+% Input spin axis (unit vector)
 a1 = -0.935469141;
 a2 = -0.010097512;
 a3 = -0.353264102;
@@ -60,7 +60,7 @@ theta_alpha_d = 0;
 % This part is modified from Professor Glenn Healey's code
 % Compute time in seconds for baseball to travel from y=release_pos_y to y=y0
 % Note that t1 is negative
-% Solves equation y0 - release_pos_y = vy0*t1 + 0.5*ay0*t1*t1
+% Solves equation release_pos_y - y0 = vy0*t1 + 0.5*ay0*t1*t1
 t1 = (-vy0 - sqrt(vy0*vy0 - 2.0*ay0*(y0 - release_pos_y)))/ay0;
 
 % Solve for position and velocity at release point (y0 = release_pos_y) in units of feet and seconds */
@@ -75,9 +75,9 @@ TM_vz0 = vz0 + az0*t1;
 t2 = (-TM_vy0 - sqrt(TM_vy0*TM_vy0 - 2.0*ay0*(TM_y0 - PLATEYDIM)))/ay0;
 
 % Input time (sec)
-time = 0.135;
+time = 0;
 
-% Compute (x,y,z) position of pitch as function of time
+% Compute (x,y,z) position of pitch as function of time (ft)
 baseballx = TM_x0 + TM_vx0*time + 0.5*ax0*time*time;
 basebally = TM_y0 + TM_vy0*time + 0.5*ay0*time*time;
 baseballz = TM_z0 + TM_vz0*time + 0.5*az0*time*time;
@@ -88,7 +88,7 @@ position_y = basebally;
 position_z = baseballz;
 center = [position_x position_y position_z]; % Baseball center
 
-% Calculate the velocity vector as a function of time
+% Calculate the velocity vector as a function of time (ft/sec)
 velocity_x = TM_vx0 + ax0*time;
 velocity_y = TM_vy0 + ay0*time;
 velocity_z = TM_vz0 + az0*time;
@@ -98,6 +98,7 @@ fprintf('vx = %f, vy = %f, vz = %f \n', velocity_x, velocity_y, velocity_z);
 % Normalize
 v_vector = v_vector./norm(v_vector);
 
+
 % Calculate the hemisphere plane using equation of a plane: ax+by+cz=d
 d = v_vector(1)*center(1) + v_vector(2)*center(2) + v_vector(3)*center(3);
 xd = linspace(center(1) - diameter2, center(1) + diameter2);
@@ -106,10 +107,12 @@ yd = linspace(center(2) - diameter2, center(2) + diameter2);
 hemisphere_z = (d - (v_vector(1).*hemisphere_x + v_vector(2).*hemisphere_y))./v_vector(3); % Solve for z vertices data
 fprintf('hemisphere plane equation: %fx + %fy + %fz = %f \n', v_vector(1), v_vector(2), v_vector(3), d); % Print the equation
 
+
 % Calculate the angle needed for the ball to rotate around the spin axis based on spin
-% rate and time
+% rate and time (degree)
 rotation_angle = mod((spin_rate*360/60)*time, 360);
 fprintf('rotation = %f \n', rotation_angle); 
+
 
 % Calculate the basis of baseball frame (for seam orientation):
 % This is based on the paper 'How to uniquely specify a pitched baseball's
@@ -259,7 +262,7 @@ set(gca,'color', [240/255 240/255 240/255]) % Background color
 axis equal
 
 % Adjust view
-view_azimuth = 90;
+view_azimuth = 180;
 view_elevation =  0;
 view([view_azimuth view_elevation]) % View (default is pitcher's perspective)
 axis([-2 2 0 60 0 10]) % Fix the axes
@@ -295,7 +298,6 @@ zlim([center(3) - diameter center(3) + diameter]);
 % The hemisphere plane and active zone are defined in the paper 'Using baseball seams to alter a pitch
 % direction: The seam shifted wake'
 surf(hemisphere_x, hemisphere_y, hemisphere_z, 'EdgeColor', 'none', 'FaceColor', 'y', 'FaceAlpha', 0.5);
-
 
 % Calculate the active zone
 % Get the position that points to negative y axis first, then rotate to the velocity vector
