@@ -1,10 +1,7 @@
 % This script can take the data from trackman then calculate
-% and plot an approximate baseball pitch trajectory as well as the
-% seam orientation, spin axis, velocity axis, and the hemisphere 
-% plane as a function of time.
-
-% The equation of seam line is from 
-% http://www.darenscotwilson.com/spec/bbseam/bbseam.html.
+% and plot an approximate instantaneous baseball position on the path
+% of its trajectory as well as the seam orientation, spin axis, 
+% velocity vector, the hemisphere plane, and the active zone.
 
 % Coordinate System Specifications:
 % The origin is at the tip of the home plate
@@ -21,7 +18,7 @@ diameter2 = 2*diameter; % Get 2*diameter
 
 
 % Input initial baseball position (in feet)
-relSide = 0.029947806;
+relSide = 0.029947806; % Positive relSide is in the -x direction
 releaseDistance = 54.7489757;
 release_pos_y = releaseDistance;
 relHeight = 6.67789545;
@@ -48,10 +45,10 @@ if ((a1^2 + a2^2 + a3^2) > 1.01 || (a1^2 + a2^2 + a3^2) < 0.99)
     throw(ME);
 end
 
-% Input spin rate
+% Input spin rate (RPM)
 spin_rate = 2394.961622;
 
-% Input seam angles
+% Input seam angles (degrees)
 lat_d = 117.3088829;
 long_d = 9.771264693;
 theta_alpha_d = 0;
@@ -60,6 +57,7 @@ theta_alpha_d = 0;
 % Calculate the position of the ball as a function of time using equations of motion
 % To do: Change it to a more appropriate model
 
+% This part is modified from Professor Glenn Healey's code
 % Compute time in seconds for baseball to travel from y=release_pos_y to y=y0
 % Note that t1 is negative
 % Solves equation y0 - release_pos_y = vy0*t1 + 0.5*ay0*t1*t1
@@ -77,7 +75,7 @@ TM_vz0 = vz0 + az0*t1;
 t2 = (-TM_vy0 - sqrt(TM_vy0*TM_vy0 - 2.0*ay0*(TM_y0 - PLATEYDIM)))/ay0;
 
 % Input time (sec)
-time = 0;
+time = 0.135;
 
 % Compute (x,y,z) position of pitch as function of time
 baseballx = TM_x0 + TM_vx0*time + 0.5*ax0*time*time;
@@ -108,16 +106,14 @@ yd = linspace(center(2) - diameter2, center(2) + diameter2);
 hemisphere_z = (d - (v_vector(1).*hemisphere_x + v_vector(2).*hemisphere_y))./v_vector(3); % Solve for z vertices data
 fprintf('hemisphere plane equation: %fx + %fy + %fz = %f \n', v_vector(1), v_vector(2), v_vector(3), d); % Print the equation
 
-% To do: Calculate the active zone (spherical segment)
-
-
-
 % Calculate the angle needed for the ball to rotate around the spin axis based on spin
 % rate and time
 rotation_angle = mod((spin_rate*360/60)*time, 360);
 fprintf('rotation = %f \n', rotation_angle); 
 
 % Calculate the basis of baseball frame (for seam orientation):
+% This is based on the paper 'How to uniquely specify a pitched baseball's
+% seam orientation'
 
 % Handle corner case when seam lat = 0
 % Set theta alpha = seam long and set seam long to 0 in this case
@@ -218,6 +214,8 @@ rotate(s, y2, long_d, center);
 rotate(s, spin_axis, theta_alpha_d, center);
 
 % Draw seams
+% The equation of seam line is from 
+% http://www.darenscotwilson.com/spec/bbseam/bbseam.html.
 alpha = 1:1:360;
 % Convert to radian
 alpha_r = alpha*pi/180.0;
@@ -261,7 +259,7 @@ set(gca,'color', [240/255 240/255 240/255]) % Background color
 axis equal
 
 % Adjust view
-view_azimuth = 180;
+view_azimuth = 90;
 view_elevation =  0;
 view([view_azimuth view_elevation]) % View (default is pitcher's perspective)
 axis([-2 2 0 60 0 10]) % Fix the axes
@@ -288,14 +286,62 @@ legend('Spin Axis', 'Velocity Vector', 'Baseball', 'Seams', 'Ground')
 % Section break to get a second plot
 
 % Zoom in to the baseball
+title('Zoomed View')
 xlim([center(1) - diameter center(1) + diameter]);
 ylim([center(2) - diameter center(2) + diameter]);
 zlim([center(3) - diameter center(3) + diameter]);
 
-% Plot the hemisphere plane
+% Plot the hemisphere plane 
+% The hemisphere plane and active zone are defined in the paper 'Using baseball seams to alter a pitch
+% direction: The seam shifted wake'
 surf(hemisphere_x, hemisphere_y, hemisphere_z, 'EdgeColor', 'none', 'FaceColor', 'y', 'FaceAlpha', 0.5);
-legend('Spin Axis', 'Velocity Vector', 'Baseball', 'Seams', 'Ground', 'Hemisphere Plane')
-
-% To do: Plot the active zone
 
 
+% Calculate the active zone
+% Get the position that points to negative y axis first, then rotate to the velocity vector
+
+% Calculate the point at the middle of the back plane using the velocity
+% vector
+distance1 = ball_radius*sin(18*pi/180); % Get the distance between center of the ball and the back plane
+
+% Calculate the point at the middle of the front plane using the velocity
+% vector
+distance2 = ball_radius*sin(6*pi/180); % Get the distance between center of the ball and the front plane
+
+% Obtain the upperbound and lowerbound for y
+y_upperbound = center(2) + distance1;
+y_lowerbound = center(2) - distance2;
+
+% Plot the active zone
+[X_az, Y_az, Z_az] = sphere(1000);
+X_az = double(center(1) + ball_radius*X_az);
+Y_az = double(center(2) + ball_radius*Y_az);
+Z_az = double(center(3) + ball_radius*Z_az);
+Y_az(Y_az < y_lowerbound) = NaN; % Remove redundant parts of the sphere
+Y_az(Y_az > y_upperbound) = NaN; 
+az = surf(X_az, Y_az, Z_az);
+az.FaceColor = 'cyan';
+az.EdgeColor = 'none'; % Grid color
+az.FaceAlpha = 1.0; % Transparency
+legend('Spin Axis', 'Velocity Vector', 'Baseball', 'Seams', 'Ground', 'Hemisphere Plane', 'Active Zone')
+
+% Rotate the strip to align the velocity vector with the negative y axis
+negative_y = [0, -1, 0];
+
+% Get the rotation angle and vector, consider different cases
+dot_product = dot(negative_y, v_vector);
+cross_product = cross(negative_y, v_vector);
+if dot_product == 1
+    rotation_theta = 0;
+elseif dot_product == -1
+    rotation_theta = pi;
+    rotate(az, [0, 0, 1], rotation_theta, center); % Rotate around z axis
+else
+    if dot_product >= 0
+        rotation_theta = asind(norm(cross_product));
+    elseif dot_product < 0
+        rotation_theta = pi - asind(norm(cross_product));
+    end
+    rotate_vector = cross_product/norm(cross_product); % Normalize
+    rotate(az, rotate_vector, rotation_theta, center); % Rotate
+end
