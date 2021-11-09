@@ -83,9 +83,9 @@ time = 0;
 baseballx = TM_x0 + TM_vx0*time + 0.5*ax0*time*time;
 basebally = TM_y0 + TM_vy0*time + 0.5*ay0*time*time;
 baseballz = TM_z0 + TM_vz0*time + 0.5*az0*time*time;
-fprintf('t = %f, x = %f, y = %f, z = %f \n', time, -baseballx, basebally, baseballz); 
+fprintf('t = %f, x = %f, y = %f, z = %f \n', time, baseballx, basebally, baseballz); 
 
-position_x = -baseballx;
+position_x = baseballx;
 position_y = basebally;
 position_z = baseballz;
 center = [position_x position_y position_z]; % Baseball center
