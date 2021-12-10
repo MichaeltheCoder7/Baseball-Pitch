@@ -1,7 +1,9 @@
 % This script can take the data from trackman then calculate
 % and plot an approximate instantaneous baseball position on the path
-% of its trajectory as well as the seam orientation, spin axis, 
+% of its pitch trajectory as well as the seam orientation, spin axis, 
 % velocity vector, the hemisphere plane, and the active zone.
+% It also calculates the seam orientation relative to the velocity vector
+% for seam shifted wake research
 
 % Coordinate System Specifications:
 % The origin is at the tip of the home plate
@@ -19,25 +21,25 @@ diameter2 = 2*diameter; % Get 2*diameter
 
 % Input initial baseball position (feet)
 relSide = 0.029947806; % Positive relSide is in the -x direction
-releaseDistance = 54.7489757;
+releaseDistance = 54.91638133;
 release_pos_y = releaseDistance;
 relHeight = 6.67789545;
 
 % Input the 9-parameter model (feet and seconds)
-x0 = 0.057382798;
+x0 = 0.154408881;
 y0 = 50;
-z0 = 6.384037468;
-vx0 = 2.376676205;
-vy0 = -134.9565751;
-vz0 = -8.609936327;
-ax0 = -6.567216039;
-ay0 = 31.01559035;
-az0 = -12.86456735;
+z0 = 6.485019981;
+vx0 = 0.828404718;
+vy0 = -134.6288521;
+vz0 = -5.574984195;
+ax0 = -7.247916794;
+ay0 = 31.19727834;
+az0 = -14.8795846;
 
 % Input spin axis (unit vector)
-a1 = -0.935469141;
-a2 = -0.010097512;
-a3 = -0.353264102;
+a1 = -0.883912073;
+a2 = 0.151604908;
+a3 = -0.442397333;
 
 % Handle exception
 if ((a1^2 + a2^2 + a3^2) > 1.01 || (a1^2 + a2^2 + a3^2) < 0.99)
@@ -49,9 +51,8 @@ end
 spin_rate = 2394.961622;
 
 % Input seam angles (degrees)
-lat_d = 117.3088829;
-long_d = 9.771264693;
-theta_alpha_d = 0;
+lat_d = 107.3929756;
+long_d = 8.910988987;
 
 
 % Calculate the position of the ball as a function of time using equations of motion
@@ -111,8 +112,8 @@ fprintf('hemisphere plane equation: %fx + %fy + %fz = %f \n', v_vector(1), v_vec
 % Calculate the angle needed for the ball to rotate around the spin axis based on spin
 % rate and time (degree)
 rotation_angle = mod((spin_rate*360/60)*time, 360);
-fprintf('rotation = %f \n', rotation_angle); 
-
+fprintf('spin axis rotation = %f \n', rotation_angle); 
+theta_alpha_d = rotation_angle;
 
 % Calculate the basis of baseball frame (for seam orientation):
 % This is based on the paper 'How to uniquely specify a pitched baseball's
@@ -185,6 +186,82 @@ spin_axis = [a1 a2 a3]; % Get spin axis
 P4 = Rk*Ralpha*Rlat*Rlong;
 
 
+% Calculate seam lat, seam long, and theta alpha relative to the velocity
+% vectors. Use the reverse calculations to obtain the seam angles, but
+% replace spin axis with unit velocity vector.
+% Note that theta alpha is the third rotation around the velocity vector
+% It is there for calculations and reference and it can be ignored.
+
+v1 = v_vector(1);
+v2 = v_vector(2);
+v3 = v_vector(3);
+
+% Calculate theta k based on velocity vector
+if v2 == 1
+    k_v = 0;
+    Rk_v = eye(3); % special case, k is undefined, Rk_v not needed
+elseif v2 == -1
+    k_v = pi;
+    % another special case, k is undefined, rotate around z axis for pi
+    Rk_v = [ cos(k_v), -sin(k_v), 0;
+             sin(k_v),  cos(k_v), 0;
+                    0,         0, 1];
+else
+    if v2 >= 0
+        k_v = asin(sqrt(v3^2 + v1^2));
+    elseif v2 < 0
+        k_v = pi - asin(sqrt(v3^2 + v1^2));
+    end
+
+    % Define rotation matrice Rk_v for velocity vector
+    Rk_v = [ cos(k_v) - (v3^2*(cos(k_v) - 1))/(v1^2 + v3^2), (v1*sin(k_v))/(v1^2 + v3^2)^(1/2),         (v1*v3*(cos(k_v) - 1))/(v1^2 + v3^2);
+                         -(v1*sin(k_v))/(v1^2 + v3^2)^(1/2),                          cos(k_v),           -(v3*sin(k_v))/(v1^2 + v3^2)^(1/2);
+                       (v1*v3*(cos(k_v) - 1))/(v1^2 + v3^2), (v3*sin(k_v))/(v1^2 + v3^2)^(1/2), cos(k_v) - (v1^2*(cos(k_v) - 1))/(v1^2 + v3^2)];
+end
+
+% Execute the reverse calculations
+e4_v = P4; % Get the basis of seam orientation obtained from the spin axis
+e1_v = vpa(Rk_v); % Get the basis of the observer frame
+
+z1_v = e1_v(:, 3);
+y4_v = e4_v(:, 2);
+x1_v = e1_v(:, 1);
+alpha_v = vpa(-atan2(dot(y4_v, -z1_v), dot(y4_v, -x1_v))); % Get theta alpha relative to velocity vector
+
+alpha_v_prime = -alpha_v;
+
+% Define rotation matrice Ralpha_v for velocity vector
+Ralpha_v = [  cos(alpha_v_prime), 0, sin(alpha_v_prime);
+                               0, 1,                  0;
+             -sin(alpha_v_prime), 0, cos(alpha_v_prime)];
+
+e3_v = e1_v*Ralpha_v*transpose(e1_v)*e4_v;
+x3_v = e3_v(:, 1);
+z3_v = e3_v(:, 3);
+long_v = vpa(-atan2(dot(x3_v, z1_v), dot(z3_v, z1_v))); % Get seam long relative to velocity vector
+
+long_v_prime = -long_v;
+
+% Define rotation matrice Rlong_v for velocity vector
+Rlong_v = [  cos(long_v_prime), 0, sin(long_v_prime);
+                             0, 1,                 0;
+            -sin(long_v_prime), 0, cos(long_v_prime)];
+
+e2_v = e3_v*Rlong_v;
+
+y1_v = e1_v(:, 2);
+y2_v = e2_v(:, 2);
+lat_v = vpa(-atan2(dot(y2_v, x1_v), dot(y2_v, y1_v))); % Get seam lat relative to velocity vector
+
+% Convert to degree and output
+alpha_v = vpa(alpha_v*180/pi); 
+lat_v = vpa(lat_v*180/pi);
+long_v = vpa(long_v*180/pi);
+fprintf("seam lat relative to velocity vector = %f", lat_v);
+fprintf("seam long relative to velocity vector = %f", long_v);
+fprintf("theta alpha relative to velocity vector = %f", alpha_v);
+
+
 % Plot:
 figure
 hold on
@@ -246,10 +323,6 @@ seamz = center(3) + seam_line(3, :);
 % Plot seam line
 p = plot3(seamx, seamy, seamz, '-r', 'LineWidth', 2.5);
 p.LineStyle = ':';
-
-% Rotate the ball and the seams around spin axis as a function of time
-rotate(s, spin_axis, rotation_angle, center);
-rotate(p, spin_axis, rotation_angle, center);
 
 
 % Label and adjust settings
