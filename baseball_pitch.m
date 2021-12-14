@@ -82,7 +82,7 @@ time = 0;
 baseballx = TM_x0 + TM_vx0*time + 0.5*ax0*time*time;
 basebally = TM_y0 + TM_vy0*time + 0.5*ay0*time*time;
 baseballz = TM_z0 + TM_vz0*time + 0.5*az0*time*time;
-fprintf('t = %f, x = %f, y = %f, z = %f \n', time, baseballx, basebally, baseballz); 
+fprintf('t = %f, x = %f, y = %f, z = %f\n', time, baseballx, basebally, baseballz); 
 
 position_x = baseballx;
 position_y = basebally;
@@ -94,7 +94,7 @@ velocity_x = TM_vx0 + ax0*time;
 velocity_y = TM_vy0 + ay0*time;
 velocity_z = TM_vz0 + az0*time;
 v_vector = [velocity_x velocity_y velocity_z];
-fprintf('vx = %f, vy = %f, vz = %f \n', velocity_x, velocity_y, velocity_z); 
+fprintf('vx = %f, vy = %f, vz = %f\n', velocity_x, velocity_y, velocity_z); 
 
 % Normalize
 v_vector = v_vector./norm(v_vector);
@@ -106,13 +106,13 @@ xd = linspace(center(1) - diameter2, center(1) + diameter2);
 yd = linspace(center(2) - diameter2, center(2) + diameter2);
 [hemisphere_x, hemisphere_y] = meshgrid(xd, yd);
 hemisphere_z = (d - (v_vector(1).*hemisphere_x + v_vector(2).*hemisphere_y))./v_vector(3); % Solve for z vertices data
-fprintf('hemisphere plane equation: %fx + %fy + %fz = %f \n', v_vector(1), v_vector(2), v_vector(3), d); % Print the equation
+fprintf('hemisphere plane equation: %fx + %fy + %fz = %f\n', v_vector(1), v_vector(2), v_vector(3), d); % Print the equation
 
 
 % Calculate the angle needed for the ball to rotate around the spin axis based on spin
-% rate and time (degree)
+% rate and time (degrees)
 rotation_angle = mod((spin_rate*360/60)*time, 360);
-fprintf('spin axis rotation = %f \n', rotation_angle); 
+fprintf('spin axis rotation (theta alpha) = %f degrees\n', rotation_angle); 
 theta_alpha_d = rotation_angle;
 
 % Calculate the basis of baseball frame (for seam orientation):
@@ -179,7 +179,7 @@ end
 temp = Rk*Rlat;
 y2 = temp(:, 2); % Rotation axis for seam long
 z1 = Rk(:, 3); % Rotation axis for seam lat
-k_d = k*180/pi; % Convert k to degree 
+k_d = k*180/pi; % Convert k to degrees
 spin_axis = [a1 a2 a3]; % Get spin axis
 
 % Define the equation for basis of standard seam orientation
@@ -192,6 +192,7 @@ P4 = Rk*Ralpha*Rlat*Rlong;
 % Note that theta alpha is the third rotation around the velocity vector
 % It is there for calculations and reference and it can be ignored.
 
+% Get the components of the velocity vector
 v1 = v_vector(1);
 v2 = v_vector(2);
 v3 = v_vector(3);
@@ -219,47 +220,103 @@ else
                        (v1*v3*(cos(k_v) - 1))/(v1^2 + v3^2), (v3*sin(k_v))/(v1^2 + v3^2)^(1/2), cos(k_v) - (v1^2*(cos(k_v) - 1))/(v1^2 + v3^2)];
 end
 
+% Define texture degeneracy matrices
+% We need these since there are no markings on the baseball
+% Obtain the angles with the minimum sum of seam lat and seam long
+Rd = cell(3);
+
+Rd{1} = eye(3);
+
+Rd{2} = [-1 0  0;
+          0 1  0;
+          0 0 -1];
+
+Rd{3} = [ 0  0 1;
+          0 -1 0;
+          1  0 0];
+
+Rd{4} = [ 0  0 -1;
+          0 -1  0;
+         -1  0  0];
+
 % Execute the reverse calculations
-e4_v = P4; % Get the basis of seam orientation obtained from the spin axis
 e1_v = vpa(Rk_v); % Get the basis of the observer frame
+P5 = P4; % Frame 5 will actually be the frame 4 obtained previous
 
-z1_v = e1_v(:, 3);
-y4_v = e4_v(:, 2);
-x1_v = e1_v(:, 1);
-alpha_v = vpa(-atan2(dot(y4_v, -z1_v), dot(y4_v, -x1_v))); % Get theta alpha relative to velocity vector
+% Use a for-loop for texture degeneracies calculation
+lat_v_final = pi;
+long_v_final = 2*pi;
+alpha_v_final = 0;
+min_sum = lat_v_final + long_v_final; % Use the maximum possible sum of seam lat and seam long as the initial value
 
-alpha_v_prime = -alpha_v;
+for j = 1:4
+    e4_v = P5*transpose(Rd{j}); % Use equation e4 = P5*(transpose of Rdj) to get frame 4
 
-% Define rotation matrice Ralpha_v for velocity vector
-Ralpha_v = [  cos(alpha_v_prime), 0, sin(alpha_v_prime);
-                               0, 1,                  0;
-             -sin(alpha_v_prime), 0, cos(alpha_v_prime)];
+    z1_v = e1_v(:, 3);
+    y4_v = e4_v(:, 2);
+    x1_v = e1_v(:, 1);
 
-e3_v = e1_v*Ralpha_v*transpose(e1_v)*e4_v;
-x3_v = e3_v(:, 1);
-z3_v = e3_v(:, 3);
-long_v = vpa(-atan2(dot(x3_v, z1_v), dot(z3_v, z1_v))); % Get seam long relative to velocity vector
+    % Get theta alpha relative to velocity vector
+    alpha_v = vpa(-atan2(dot(y4_v, -z1_v), dot(y4_v, -x1_v)));
 
-long_v_prime = -long_v;
+    % Make sure theta alpha is positive
+    if alpha_v < 0
+        alpha_v = 2*pi + alpha_v;
+    end
 
-% Define rotation matrice Rlong_v for velocity vector
-Rlong_v = [  cos(long_v_prime), 0, sin(long_v_prime);
-                             0, 1,                 0;
-            -sin(long_v_prime), 0, cos(long_v_prime)];
+    alpha_v_prime = -alpha_v;
+    
+    % Define rotation matrice Ralpha_v for velocity vector
+    Ralpha_v = [  cos(alpha_v_prime), 0, sin(alpha_v_prime);
+                                   0, 1,                  0;
+                 -sin(alpha_v_prime), 0, cos(alpha_v_prime)];
+    
+    e3_v = e1_v*Ralpha_v*transpose(e1_v)*e4_v; % Get the basis of frame 3, e3 = e1*Ry(-theta_alpha)*e4
+    x3_v = e3_v(:, 1);
+    z3_v = e3_v(:, 3);
 
-e2_v = e3_v*Rlong_v;
+    % Get seam long relative to velocity vector
+    long_v = vpa(-atan2(dot(x3_v, z1_v), dot(z3_v, z1_v)));
+    
+    % Make sure seam long is positive
+    if long_v < 0
+        long_v = 2*pi + long_v;
+    end
+    
+    long_v_prime = -long_v;
+    
+    % Define rotation matrice Rlong_v for velocity vector
+    Rlong_v = [  cos(long_v_prime), 0, sin(long_v_prime);
+                                 0, 1,                 0;
+                -sin(long_v_prime), 0, cos(long_v_prime)];
+    
+    e2_v = e3_v*Rlong_v; % Get the basis of frame 2, e2 = e3*Ry(-seam long)
+    
+    y1_v = e1_v(:, 2);
+    y2_v = e2_v(:, 2);
 
-y1_v = e1_v(:, 2);
-y2_v = e2_v(:, 2);
-lat_v = vpa(-atan2(dot(y2_v, x1_v), dot(y2_v, y1_v))); % Get seam lat relative to velocity vector
+    % Get seam lat relative to velocity vector
+    lat_v = vpa(-atan2(dot(y2_v, x1_v), dot(y2_v, y1_v)));
 
-% Convert to degree and output
-alpha_v = vpa(alpha_v*180/pi); 
-lat_v = vpa(lat_v*180/pi);
-long_v = vpa(long_v*180/pi);
-fprintf("seam lat relative to velocity vector = %f", lat_v);
-fprintf("seam long relative to velocity vector = %f", long_v);
-fprintf("theta alpha relative to velocity vector = %f", alpha_v);
+    % Calculate the sum of seam lat and seam long
+    sum = lat_v + long_v;
+
+    % Check and see if this is the minimum
+    if sum < min_sum
+        min_sum = sum;
+        lat_v_final = lat_v;
+        long_v_final = long_v;
+        alpha_v_final = alpha_v;
+    end
+end
+
+% Convert to degrees and output
+alpha_v_final = vpa(alpha_v_final*180/pi); 
+lat_v_final = vpa(lat_v_final*180/pi);
+long_v_final = vpa(long_v_final*180/pi);
+fprintf("seam lat relative to velocity vector = %f degrees\n", lat_v_final);
+fprintf("seam long relative to velocity vector = %f degrees\n", long_v_final);
+fprintf("theta alpha relative to velocity vector = %f degrees\n", alpha_v_final);
 
 
 % Plot:
@@ -335,7 +392,7 @@ set(gca,'color', [240/255 240/255 240/255]) % Background color
 axis equal
 
 % Adjust view
-view_azimuth = 180;
+view_azimuth = 90;
 view_elevation =  0;
 view([view_azimuth view_elevation]) % View (default is pitcher's perspective)
 axis([-2 2 0 60 0 10]) % Fix the axes
