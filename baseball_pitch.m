@@ -241,7 +241,7 @@ Rd{4} = [ 0  0 -1;
 
 % Execute the reverse calculations
 e1_v = vpa(Rk_v); % Get the basis of the observer frame
-P5 = P4; % Frame 5 will actually be the frame 4 obtained previous
+P5 = P4; % Frame 5 will actually be the frame 4 obtained previously
 
 % Use a for-loop for texture degeneracies calculation
 lat_v_final = pi;
