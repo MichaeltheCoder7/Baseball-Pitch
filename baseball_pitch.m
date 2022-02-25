@@ -357,10 +357,22 @@ alpha = 1:1:360;
 % Convert to radian
 alpha_r = alpha*pi/180.0;
 
+% Calculate seam points with even spacing
+%seamx = (1/13)*ball_radius*(9*cos(alpha_r) - 4*cos(3*alpha_r));
+%seamy = (1/13)*ball_radius*(9*sin(alpha_r) + 4*sin(3*alpha_r));
+%seamz = (12/13)*ball_radius*cos(2*alpha_r);
+
 % Calculate seam points
-seamx = (1/13)*ball_radius*(9*cos(alpha_r) - 4*cos(3*alpha_r));
-seamy = (1/13)*ball_radius*(9*sin(alpha_r) + 4*sin(3*alpha_r));
-seamz = (12/13)*ball_radius*cos(2*alpha_r);
+% Adjust the extent of backfold, but without even spacing 
+B = 0.5;
+F = 1.0;
+xu = cos(alpha_r) - B*cos(3*alpha_r);
+yu = sin(alpha_r) + B*sin(3*alpha_r);
+zu = F*cos(2*alpha_r);
+ru = sqrt(xu.^2 + yu.^2 + zu.^2); % Normalize
+seamx = ball_radius.*xu./ru;
+seamy = ball_radius.*yu./ru;
+seamz = ball_radius.*zu./ru;
 
 % Account for axes offset
 % baseballx = y, basebally = z, baseballz = x
