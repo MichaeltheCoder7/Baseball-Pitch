@@ -353,7 +353,7 @@ rotate(s, spin_axis, theta_alpha_d, center);
 % Draw seams
 % The equation of seam line is from 
 % http://www.darenscotwilson.com/spec/bbseam/bbseam.html.
-alpha = 1:1:360;
+alpha = 0:1:360;
 % Convert to radian
 alpha_r = alpha*pi/180.0;
 
@@ -391,7 +391,7 @@ seamz = center(3) + seam_line(3, :);
 
 % Plot seam line
 p = plot3(seamx, seamy, seamz, '-r', 'LineWidth', 2.5);
-p.LineStyle = ':';
+%p.LineStyle = ':';
 
 
 % Label and adjust settings

@@ -159,7 +159,7 @@ rotate(s, y2, long_d, center);
 rotate(s, spin_axis, theta_alpha_d, center);
 
 % Draw seam
-alpha = 1:1:360;
+alpha = 0:1:360;
 % Convert to radian
 alpha_r = alpha*pi/180.0;
 
@@ -188,8 +188,8 @@ adjustedy = seamz;
 adjustedz = seamx;
 
 % Plot seam line
-p = plot3(adjustedx, adjustedy, adjustedz, '-r', 'LineWidth', 4);
-p.LineStyle = ':';
+p = plot3(adjustedx, adjustedy, adjustedz, '-r', 'LineWidth', 3);
+%p.LineStyle = ':';
 
 % Rotate
 rotate(p, k_vector, k_d, center);
